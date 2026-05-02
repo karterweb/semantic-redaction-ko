@@ -1,23 +1,5 @@
 # semantic-redaction-ko
 
-> **Masking hides words. Semantic redaction preserves reasoning.**
-
-`semantic-redaction-ko` is a Qwen-powered killer demo for Korean financial companies that want to use external LLMs without leaking personal credit information.
-
-It models the architecture many Korean financial institutions need for **Innovative Financial Services** and financial network separation exceptions: a local open-weight LLM such as Qwen runs inside the closed/private network, understands the raw customer context, and converts it into a meaning-preserving pseudonymized decision state before anything reaches an external LLM.
-
-```text
-Private Raw Input
-  -> Local Qwen Semantic Redactor
-  -> Deterministic Policy & Privacy Gate
-  -> External LLM Payload
-  -> Safe Internal Rehydration
-```
-
-The external LLM receives useful reasoning context, not personal credit data.
-
----
-
 > **마스킹은 단어를 숨기지만, 의미 보존 가명화는 추론 상태를 보존합니다.**
 
 `semantic-redaction-ko`는 외부 LLM을 쓰고 싶지만 개인신용정보를 유출할 수 없는 한국 금융회사를 위한 Qwen 기반 킬러 데모입니다.
@@ -33,36 +15,6 @@ Private Raw Input
 ```
 
 외부 LLM은 개인신용정보가 아니라, 답변에 필요한 안전한 추론 맥락만 받습니다.
-
-## Why This Is Different
-
-Traditional redaction:
-
-```text
-스타벅스 강남2호점 / 6,800원 / 승인
-SBUX GANGNAM STN / 6,800원 / 취소
-  -> MERCHANT_1 / AMOUNT_1 / STATUS_1
-```
-
-This is private, but the LLM loses the important meaning: these two records may be the same coffee-chain authorization lifecycle, where one transaction was approved and one was cancelled.
-
-Semantic redaction:
-
-```json
-{
-  "merchant_taxonomy": "coffee_chain",
-  "location_granularity": "same_commercial_area",
-  "amount_relation": "same_amount",
-  "temporal_relation": "near_time_duplicate_within_2_minutes",
-  "authorization_lifecycle": ["approved", "cancelled"],
-  "billing_interpretation": "approved_and_cancelled_pair_likely_single_final_charge",
-  "required_action": "explain_transactions_without_raw_merchant_names"
-}
-```
-
-The LLM can still explain the situation, but it never sees the raw merchant names, card number fragments, detailed location, or original ledger records.
-
----
 
 ## 무엇이 다른가
 
@@ -92,33 +44,6 @@ Semantic redaction:
 
 LLM은 상황을 설명할 수 있지만, 원 가맹점명, 카드번호 일부, 상세 위치, 원장 데이터는 보지 못합니다.
 
-## Advanced Redaction Strategy
-
-This demo uses a two-layer strategy:
-
-1. **Local Qwen draft**
-   - A self-hosted Qwen model runs inside the private financial network.
-   - It drafts intent, candidates, reasons, conflicts, uncertainty, and required action.
-
-2. **Deterministic semantic policy engine**
-   - It removes sensitive leaks from the Qwen draft.
-   - It adds testable, purpose-bound meaning that is safe for the external LLM.
-   - It records which meaning was preserved and which private fields were suppressed.
-
-Implemented techniques:
-
-| Technique | Preserves | Suppresses |
-|---|---|---|
-| Tokenized entity binding | Stable references such as `TX_A`, `CLAIM_A`, `DEBT_B` | Names, raw merchants, institutions, policy numbers |
-| Domain taxonomy lifting | `coffee_chain`, `diagnostic_imaging_mri`, `card_loan` | Raw merchant, hospital, issuer strings |
-| Relation encoding | Same amount, near-time duplicate, high-rate-first priority | Exact timestamps, exact balances, raw descriptions |
-| Lifecycle abstraction | Approved/cancelled pair, possible claim, repayment priority | Full ledgers and contract identifiers |
-| Banding/generalization | Rate bands, balance bands, provider class | Exact balances, exact hospital names |
-| Uncertainty contract | Confirmed/likely/conflicting/needs-documents states | Hidden overconfidence |
-| Purpose-bound minimization | Only facts needed for the LLM task | Extra unrelated private context |
-
----
-
 ## 고급 가명화 전략
 
 이 데모는 두 단계 전략을 사용합니다.
@@ -144,30 +69,6 @@ Implemented techniques:
 | 불확실성 계약 | 확정/추정/충돌/서류 필요 상태 | 숨겨진 과잉확신 |
 | 목적 제한 최소화 | LLM 업무에 필요한 사실만 전달 | 답변과 무관한 사적 맥락 |
 
-## Korean Regulatory Context
-
-This project is inspired by the Korean financial AI adoption pattern around:
-
-- **Innovative Financial Services** under the Korean financial regulatory sandbox.
-- External generative AI usage by banks, card companies, insurers, securities firms, and fintechs.
-- The recurring need to control whether pseudonymized information is sent to external AI models.
-- The Korean `가명정보 처리 가이드라인(2026.03.)`, especially:
-  - Utility must be preserved enough to achieve the processing purpose.
-  - Re-identification risk must be controlled, not hand-waved away.
-  - Additional information and mapping tables must be separated and access-controlled.
-  - Suitability review and residual-risk monitoring are part of the process.
-
-This is a technical demo, not legal advice. It is designed to help AI/data/security teams discuss a safer architecture before applying for or operating an AI-powered Innovative Financial Service.
-
-Relevant public context:
-
-- [Korean Financial Regulatory Sandbox](https://sandbox.fintech.or.kr/)
-- [KB Kookmin Card: generative AI card-life mate](https://sandbox.fintech.or.kr/business/enterprise.do?id=479&lang=ko)
-- [KakaoPay: asset-management AI financial agent](https://sandbox.fintech.or.kr/business/enterprise.do?id=805&lang=ko)
-- [Aijinet: insurance coverage analysis conversational service](https://sandbox.fintech.or.kr/business/enterprise.do?id=683&lang=ko)
-
----
-
 ## 한국 규제 및 시장 맥락
 
 이 프로젝트는 국내 금융권 AI 도입 흐름에서 출발했습니다.
@@ -189,34 +90,6 @@ Relevant public context:
 - [KB국민카드: 생성형 AI 카드생활 메이트](https://sandbox.fintech.or.kr/business/enterprise.do?id=479&lang=ko)
 - [카카오페이: 자산관리 AI 금융 에이전트](https://sandbox.fintech.or.kr/business/enterprise.do?id=805&lang=ko)
 - [아이지넷: 보장분석 대화형 서비스](https://sandbox.fintech.or.kr/business/enterprise.do?id=683&lang=ko)
-
-## Demo Scenarios
-
-```bash
-semantic-redaction demo card
-semantic-redaction demo insurance
-semantic-redaction demo debt
-semantic-redaction demo all
-semantic-redaction audit last-run --format md
-```
-
-Scenarios:
-
-- Card transaction mystery: `지난주 강남 스벅 두 번 긁힌 거 뭐야? 하나는 취소된 거 아냐?`
-- Insurance claim guidance: `아버지 무릎 MRI 찍은 거 서울아산병원에서 한 건 실손 청구돼?`
-- Debt optimization: `신한 마통보다 카드론 먼저 갚는 게 나아, 자동차 할부 먼저 갚는 게 나아?`
-
-Each run prints:
-
-1. Raw private input
-2. Qwen draft
-3. Policy gate findings
-4. Meaning-preserving techniques
-5. External LLM payload
-6. Final rehydrated response
-7. Privacy audit
-
----
 
 ## 데모 시나리오
 
@@ -244,32 +117,6 @@ semantic-redaction audit last-run --format md
 6. 내부 재결합 최종 응답
 7. Privacy audit
 
-## Install
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-```
-
-For local Qwen inference with Ollama:
-
-```bash
-ollama pull qwen3:30b-a3b
-semantic-redaction demo all --model qwen3:30b-a3b
-```
-
-If Ollama or Qwen is unavailable, the demo falls back to mock Qwen drafts so the full pipeline still runs.
-
-For vLLM/SGLang-style local serving:
-
-```bash
-OPENAI_COMPATIBLE_BASE_URL=http://localhost:8000/v1 \
-semantic-redaction demo card --runtime openai-compatible --model Qwen/Qwen3-30B-A3B
-```
-
----
-
 ## 설치
 
 ```bash
@@ -288,6 +135,151 @@ semantic-redaction demo all --model qwen3:30b-a3b
 Ollama나 Qwen이 없어도 mock Qwen draft로 전체 파이프라인이 실행됩니다.
 
 vLLM/SGLang 방식의 OpenAI-compatible 로컬 서버를 사용할 수도 있습니다.
+
+```bash
+OPENAI_COMPATIBLE_BASE_URL=http://localhost:8000/v1 \
+semantic-redaction demo card --runtime openai-compatible --model Qwen/Qwen3-30B-A3B
+```
+
+---
+
+# English
+
+> **Masking hides words. Semantic redaction preserves reasoning.**
+
+`semantic-redaction-ko` is a Qwen-powered killer demo for Korean financial companies that want to use external LLMs without leaking personal credit information.
+
+It models the architecture many Korean financial institutions need for **Innovative Financial Services** and financial network separation exceptions: a local open-weight LLM such as Qwen runs inside the closed/private network, understands the raw customer context, and converts it into a meaning-preserving pseudonymized decision state before anything reaches an external LLM.
+
+```text
+Private Raw Input
+  -> Local Qwen Semantic Redactor
+  -> Deterministic Policy & Privacy Gate
+  -> External LLM Payload
+  -> Safe Internal Rehydration
+```
+
+The external LLM receives useful reasoning context, not personal credit data.
+
+## Why This Is Different
+
+Traditional redaction:
+
+```text
+스타벅스 강남2호점 / 6,800원 / 승인
+SBUX GANGNAM STN / 6,800원 / 취소
+  -> MERCHANT_1 / AMOUNT_1 / STATUS_1
+```
+
+This is private, but the LLM loses the important meaning: these two records may be the same coffee-chain authorization lifecycle, where one transaction was approved and one was cancelled.
+
+Semantic redaction:
+
+```json
+{
+  "merchant_taxonomy": "coffee_chain",
+  "location_granularity": "same_commercial_area",
+  "amount_relation": "same_amount",
+  "temporal_relation": "near_time_duplicate_within_2_minutes",
+  "authorization_lifecycle": ["approved", "cancelled"],
+  "billing_interpretation": "approved_and_cancelled_pair_likely_single_final_charge",
+  "required_action": "explain_transactions_without_raw_merchant_names"
+}
+```
+
+The LLM can still explain the situation, but it never sees the raw merchant names, card number fragments, detailed location, or original ledger records.
+
+## Advanced Redaction Strategy
+
+This demo uses a two-layer strategy:
+
+1. **Local Qwen draft**
+   - A self-hosted Qwen model runs inside the private financial network.
+   - It drafts intent, candidates, reasons, conflicts, uncertainty, and required action.
+
+2. **Deterministic semantic policy engine**
+   - It removes sensitive leaks from the Qwen draft.
+   - It adds testable, purpose-bound meaning that is safe for the external LLM.
+   - It records which meaning was preserved and which private fields were suppressed.
+
+Implemented techniques:
+
+| Technique | Preserves | Suppresses |
+|---|---|---|
+| Tokenized entity binding | Stable references such as `TX_A`, `CLAIM_A`, `DEBT_B` | Names, raw merchants, institutions, policy numbers |
+| Domain taxonomy lifting | `coffee_chain`, `diagnostic_imaging_mri`, `card_loan` | Raw merchant, hospital, issuer strings |
+| Relation encoding | Same amount, near-time duplicate, high-rate-first priority | Exact timestamps, exact balances, raw descriptions |
+| Lifecycle abstraction | Approved/cancelled pair, possible claim, repayment priority | Full ledgers and contract identifiers |
+| Banding/generalization | Rate bands, balance bands, provider class | Exact balances, exact hospital names |
+| Uncertainty contract | Confirmed/likely/conflicting/needs-documents states | Hidden overconfidence |
+| Purpose-bound minimization | Only facts needed for the LLM task | Extra unrelated private context |
+
+## Korean Regulatory Context
+
+This project is inspired by the Korean financial AI adoption pattern around:
+
+- **Innovative Financial Services** under the Korean financial regulatory sandbox.
+- External generative AI usage by banks, card companies, insurers, securities firms, and fintechs.
+- The recurring need to control whether pseudonymized information is sent to external AI models.
+- The Korean `가명정보 처리 가이드라인(2026.03.)`, especially:
+  - Utility must be preserved enough to achieve the processing purpose.
+  - Re-identification risk must be controlled, not hand-waved away.
+  - Additional information and mapping tables must be separated and access-controlled.
+  - Suitability review and residual-risk monitoring are part of the process.
+
+This is a technical demo, not legal advice. It is designed to help AI/data/security teams discuss a safer architecture before applying for or operating an AI-powered Innovative Financial Service.
+
+Relevant public context:
+
+- [Korean Financial Regulatory Sandbox](https://sandbox.fintech.or.kr/)
+- [KB Kookmin Card: generative AI card-life mate](https://sandbox.fintech.or.kr/business/enterprise.do?id=479&lang=ko)
+- [KakaoPay: asset-management AI financial agent](https://sandbox.fintech.or.kr/business/enterprise.do?id=805&lang=ko)
+- [Aijinet: insurance coverage analysis conversational service](https://sandbox.fintech.or.kr/business/enterprise.do?id=683&lang=ko)
+
+## Demo Scenarios
+
+```bash
+semantic-redaction demo card
+semantic-redaction demo insurance
+semantic-redaction demo debt
+semantic-redaction demo all
+semantic-redaction audit last-run --format md
+```
+
+Scenarios:
+
+- Card transaction mystery: `지난주 강남 스벅 두 번 긁힌 거 뭐야? 하나는 취소된 거 아냐?`
+- Insurance claim guidance: `아버지 무릎 MRI 찍은 거 서울아산병원에서 한 건 실손 청구돼?`
+- Debt optimization: `신한 마통보다 카드론 먼저 갚는 게 나아, 자동차 할부 먼저 갚는 게 나아?`
+
+Each run prints:
+
+1. Raw private input
+2. Qwen draft
+3. Policy gate findings
+4. Meaning-preserving techniques
+5. External LLM payload
+6. Final rehydrated response
+7. Privacy audit
+
+## Install
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+For local Qwen inference with Ollama:
+
+```bash
+ollama pull qwen3:30b-a3b
+semantic-redaction demo all --model qwen3:30b-a3b
+```
+
+If Ollama or Qwen is unavailable, the demo falls back to mock Qwen drafts so the full pipeline still runs.
+
+For vLLM/SGLang-style local serving:
 
 ```bash
 OPENAI_COMPATIBLE_BASE_URL=http://localhost:8000/v1 \
