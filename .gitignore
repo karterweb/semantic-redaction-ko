@@ -1,0 +1,5 @@
+.semantic-redaction/
+__pycache__/
+.pytest_cache/
+.venv/
+*.egg-info/
