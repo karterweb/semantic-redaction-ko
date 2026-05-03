@@ -4,8 +4,9 @@ import json
 from pathlib import Path
 
 from semantic_redaction.cases import get_case
+from semantic_redaction.crossref import CrossReferenceDetector
 from semantic_redaction.external import MockExternalLLM, SafeRehydrator
-from semantic_redaction.models import PipelineResult, UseCase
+from semantic_redaction.models import CrossReferenceWarning, PrivacyFinding, PipelineResult, UseCase
 from semantic_redaction.policy import PrivacyPolicyGate
 from semantic_redaction.redactor import SemanticRedactor
 
@@ -19,16 +20,20 @@ class PipelineRunner:
         self.policy = PrivacyPolicyGate()
         self.external_llm = MockExternalLLM()
         self.rehydrator = SafeRehydrator()
+        self.crossref = CrossReferenceDetector()
 
     def run(self, usecase: UseCase) -> PipelineResult:
         case = get_case(usecase)
         draft, runtime = self.redactor.draft(case)
+
+        # --- Phase 1: Qwen draft 검사 ---
         initial_findings = self.policy.inspect(case, draft)
 
         repaired = False
         blocked = False
         safe_draft = draft
         findings_for_audit = initial_findings
+
         if initial_findings:
             repaired = True
             safe_draft = self.policy.sanitize(case, draft)
@@ -36,6 +41,7 @@ class PipelineRunner:
             findings_for_audit = initial_findings
             blocked = bool(remaining_findings)
 
+        # --- Phase 2: 의미 보존 enrichment ---
         techniques_applied: list[str] = []
         utility_preservation: dict[str, object] = {}
         if not blocked:
@@ -45,6 +51,36 @@ class PipelineRunner:
                 blocked = True
                 findings_for_audit = [*findings_for_audit, *post_enrichment_findings]
 
+        # --- Phase 3: External LLM + Outbound 필터 + 교차 참조 탐지 ---
+        decision_state = None
+        external_payload = None
+        external_response = None
+        final_response = None
+        outbound_findings: list[PrivacyFinding] = []
+        cross_ref_warnings: list[CrossReferenceWarning] = []
+
+        if not blocked:
+            decision_state = self.policy.to_decision_state(
+                safe_draft,
+                techniques_applied,
+                utility_preservation,
+                [],  # residual_risks는 audit에서 설정
+            )
+            external_payload = self.policy.to_external_payload(decision_state)
+            external_response = self.external_llm.complete(case.usecase, external_payload)
+
+            # Outbound 필터: 외부 LLM 응답에 민감정보 포함 여부 검사
+            outbound_findings = self.policy.inspect_string(case, external_response)
+            if outbound_findings:
+                external_response = self.policy.sanitize_string(case, external_response)
+
+            final_response = self.rehydrator.rehydrate(external_response, case.rehydration_map)
+
+            # 교차 참조 탐지: 누적 의미 차원 추적
+            exposed_dims = list(utility_preservation.get("preserved", []))
+            cross_ref_warnings = self.crossref.check_and_register(case.usecase, exposed_dims)
+
+        # --- Phase 4: 감사 로그 생성 (모든 findings 포함) ---
         audit = self.policy.build_audit(
             case,
             findings_for_audit,
@@ -52,22 +88,13 @@ class PipelineRunner:
             blocked=blocked,
             techniques_applied=techniques_applied,
             utility_preservation=utility_preservation,
+            outbound_findings=outbound_findings,
+            cross_reference_warnings=cross_ref_warnings,
+            external_called=not blocked,
         )
-
-        decision_state = None
-        external_payload = None
-        external_response = None
-        final_response = None
-        if not blocked:
-            decision_state = self.policy.to_decision_state(
-                safe_draft,
-                techniques_applied,
-                utility_preservation,
-                audit.residual_risks,
-            )
-            external_payload = self.policy.to_external_payload(decision_state)
-            external_response = self.external_llm.complete(case.usecase, external_payload)
-            final_response = self.rehydrator.rehydrate(external_response, case.rehydration_map)
+        # residual_risks를 decision_state에 반영
+        if decision_state is not None:
+            decision_state.residual_risks = audit.residual_risks
 
         result = PipelineResult(
             case=case,

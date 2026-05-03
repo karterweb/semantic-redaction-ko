@@ -68,6 +68,18 @@ LLM은 상황을 설명할 수 있지만, 원 가맹점명, 카드번호 일부,
 | 밴딩/일반화 | 금리 구간, 잔액 구간, 의료기관 종류 | 정확 잔액, 정확 병원명 |
 | 불확실성 계약 | 확정/추정/충돌/서류 필요 상태 | 숨겨진 과잉확신 |
 | 목적 제한 최소화 | LLM 업무에 필요한 사실만 전달 | 답변과 무관한 사적 맥락 |
+| **쿼리 관련성 필터** | 질문과 직접 관련된 의미 차원 보존 강화 | 질문과 무관한 PII 억제 강화 |
+
+### 보안 계층
+
+의미 보존 유틸리티를 낮추지 않으면서 프라이버시를 강화하는 4개의 추가 보안 계층:
+
+| 계층 | 역할 |
+|---|---|
+| **확장된 FORBIDDEN_PATTERNS** | 주민등록번호, 카드 16자리, 사업자등록번호, 이메일, 카드사·증권사·보험사·캐피탈명, 병원·의원명, 만원/억원 단위 금액 탐지 |
+| **Dict key 스캔** | Qwen 출력의 value뿐 아니라 key도 민감정보 검사 대상 |
+| **Outbound 필터** | 외부 LLM 응답을 재결합 전에 한 번 더 검사·정제 |
+| **교차 참조 탐지** | 동일 엔티티에 대한 반복 쿼리에서 의미 차원 누적을 추적해 재식별 위험 경고 (차단이 아닌 탐지) |
 
 ## 한국 규제 및 시장 맥락
 
@@ -115,7 +127,7 @@ semantic-redaction audit last-run --format md
 4. 의미 보존 가명화 기법
 5. 외부 LLM payload
 6. 내부 재결합 최종 응답
-7. Privacy audit
+7. Privacy audit (2026 위험 등급 + 교차 참조 경고 포함)
 
 ## 설치
 
@@ -213,6 +225,18 @@ Implemented techniques:
 | Banding/generalization | Rate bands, balance bands, provider class | Exact balances, exact hospital names |
 | Uncertainty contract | Confirmed/likely/conflicting/needs-documents states | Hidden overconfidence |
 | Purpose-bound minimization | Only facts needed for the LLM task | Extra unrelated private context |
+| **Query-relevance filter** | Finer-grained semantic facts for query-relevant PII | More aggressive suppression of query-irrelevant PII |
+
+### Security Layers
+
+Four additional security layers that strengthen privacy without reducing semantic utility:
+
+| Layer | Role |
+|---|---|
+| **Extended FORBIDDEN_PATTERNS** | Detects Korean RRN, 16-digit card numbers, business registration numbers, emails, card/securities/insurance/capital company names, hospital/clinic names, and Korean unit amounts (만원/억원) |
+| **Dict key scanning** | Scans both keys and values in Qwen output — not just values |
+| **Outbound filter** | Inspects and sanitizes external LLM responses before rehydration |
+| **Cross-reference detection** | Tracks cumulative semantic dimension exposure across repeated queries on the same entity; warns (does not block) when re-identification risk increases |
 
 ## Korean Regulatory Context
 
@@ -260,7 +284,7 @@ Each run prints:
 4. Meaning-preserving techniques
 5. External LLM payload
 6. Final rehydrated response
-7. Privacy audit
+7. Privacy audit (2026 risk tier assessment + cross-reference warnings)
 
 ## Install
 

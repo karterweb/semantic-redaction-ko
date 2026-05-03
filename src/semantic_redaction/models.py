@@ -69,6 +69,21 @@ class PrivacyFinding(BaseModel):
     severity: Literal["low", "medium", "high"]
 
 
+class CrossReferenceWarning(BaseModel):
+    usecase: UseCase
+    level: Literal["medium", "high"]
+    cumulative_dimension_count: int
+    overlapping_dimensions: list[str]
+    description: str
+
+
+class RiskTierAssessment(BaseModel):
+    tier: Literal["low", "medium", "high"]
+    rationale: str
+    reviewer_count_required: int
+    guideline_reference: str
+
+
 class PrivacyAudit(BaseModel):
     case_id: str
     usecase: UseCase
@@ -77,8 +92,12 @@ class PrivacyAudit(BaseModel):
     findings: list[PrivacyFinding]
     techniques_applied: list[str]
     utility_preservation: dict[str, Any]
+    utility_score: float
     guideline_controls: list[str]
     residual_risks: list[str]
+    outbound_findings: list[PrivacyFinding] = Field(default_factory=list)
+    cross_reference_warnings: list[CrossReferenceWarning] = Field(default_factory=list)
+    risk_tier_assessment: RiskTierAssessment
 
 
 class PipelineResult(BaseModel):

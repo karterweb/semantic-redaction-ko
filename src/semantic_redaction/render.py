@@ -43,7 +43,11 @@ def render_result(console: Console, result: PipelineResult) -> None:
     else:
         table.add_row("low", "no_findings", "$", "-")
     console.print(table)
-    console.print(f"Status: [bold]{result.policy_audit.status}[/bold] | Risk: {result.policy_audit.risk_level}")
+    console.print(
+        f"Status: [bold]{result.policy_audit.status}[/bold]"
+        f" | Risk: {result.policy_audit.risk_level}"
+        f" | Utility Score: {result.policy_audit.utility_score:.2f}"
+    )
     console.print(
         Panel(
             "\n".join(result.policy_audit.techniques_applied) or "-",
@@ -64,4 +68,43 @@ def render_result(console: Console, result: PipelineResult) -> None:
         console.print(Panel("blocked_privacy_risk", title="4. External LLM Payload", border_style="red"))
 
     console.print(Panel(result.external_response or "-", title="5. Mock External LLM Response", border_style="blue"))
+
+    # Outbound findings
+    if result.policy_audit.outbound_findings:
+        out_table = Table(title="5a. Outbound Filter Findings (sanitized before rehydration)")
+        out_table.add_column("Severity")
+        out_table.add_column("Reason")
+        out_table.add_column("Value")
+        for f in result.policy_audit.outbound_findings:
+            out_table.add_row(f.severity, f.reason, f.value)
+        console.print(out_table)
+
     console.print(Panel(result.final_response or "-", title="6. Safe Rehydration", border_style="green"))
+
+    # Privacy audit summary
+    audit = result.policy_audit
+    tier = audit.risk_tier_assessment
+    console.print(
+        Panel(
+            f"Tier: [bold]{tier.tier.upper()}[/bold]\n"
+            f"Rationale: {tier.rationale}\n"
+            f"Reviewer count required: {tier.reviewer_count_required}\n"
+            f"Reference: {tier.guideline_reference}",
+            title="7. Privacy Audit — 2026 Risk Tier Assessment",
+            border_style="red" if tier.tier == "high" else "yellow",
+        )
+    )
+
+    # Cross-reference warnings
+    if audit.cross_reference_warnings:
+        for warning in audit.cross_reference_warnings:
+            console.print(
+                Panel(
+                    f"Level: [bold]{warning.level.upper()}[/bold]\n"
+                    f"Cumulative dimensions: {warning.cumulative_dimension_count}\n"
+                    f"Overlapping: {', '.join(warning.overlapping_dimensions) or '-'}\n"
+                    f"{warning.description}",
+                    title="⚠ Cross-Reference Warning",
+                    border_style="yellow",
+                )
+            )
